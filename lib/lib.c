@@ -1,5 +1,3 @@
-#include "lib.h"
-
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -17,6 +15,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "../include/lib.h"
 
 int interfaces[ROUTER_NUM_INTERFACES];
 

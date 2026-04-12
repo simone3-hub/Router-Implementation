@@ -1,5 +1,5 @@
-#include "queue.h"
-#include "list.h"
+#include "../include/queue.h"
+#include "../include/list.h"
 #include <stdlib.h>
 #include <assert.h>
 
