@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 				
 				if (ip_buf->dest_addr == inet_addr(get_interface_ip(i))) {
 					in_routers = true;
-					printf("Adresa ip este pentru unul din routerele mele");
+					printf("Adresa ip este pentru unul din routerele mele\n");
 					break;
 				}
 			}
@@ -119,12 +119,12 @@ int main(int argc, char *argv[])
 			uint16_t actual_checksum = checksum((uint16_t *) ip_buf, sizeof(struct ip_hdr));
 			
 			if (previous_checksum != actual_checksum) {
-				printf("Checksumuri diferite");
+				printf("Checksumuri diferite\n");
 				continue;
 			}
 
 			if (ip_buf->ttl <= 1) {
-				printf("E timpul sa iesi!!!");
+				printf("E timpul sa iesi!!!\n");
 				continue;
 			}
 
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 			// }
 
 			if (best_route == NULL) {
-				printf("Nu exista ruta");
+				printf("Nu exista ruta\n");
 				continue;
 			}
 			
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 			}
 
 			if (next_mac == NULL) {
-				printf("N am gasit adresa MAC de la urmatorul ruter");
+				printf("N am gasit adresa MAC de la urmatorul ruter\n");
 
 				// pun pachetul curent in coada
 				packet *pkt = malloc(sizeof (packet));
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 				
 				send_to_link(42, whole_arp_req, best_route->interface);
 
-				printf("Trimit ARP sa aflu adresa MAC prin broadcast");
+				printf("Trimit ARP sa aflu adresa MAC prin broadcast\n");
 				continue;
 			}
 
@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
 		} else if (ntohs(ethernet_packet->ethr_type) == 0x806) {
 
 			struct arp_hdr *receive_arp = (struct arp_hdr *)(buf + 14);
-			printf("A intrat in ARP");
+			printf("A intrat in ARP\n");
 			if (ntohs(receive_arp->opcode) == 1) {
 				// intreb cine are ip ul pe care l caut
 
@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 				receive_arp->sprotoa = inet_addr(get_interface_ip(interface));
 
 				send_to_link(42, buf, interface);
-				printf("Merge/intra in 1");
+				printf("Merge/intra in 1\n");
 			} else if (ntohs(receive_arp->opcode) == 2) {
 				// aici e ip ul pe care l caut, dau MAC ul de aici
 
@@ -340,11 +340,11 @@ int main(int argc, char *argv[])
 				}
 
 				free(put_back_q);
-				printf("Merge/intra in 2");
+				printf("Merge/intra in 2\n");
 			}
 		} else {
 
-			printf("Am dat drop la pachet nu e IPv4");
+			printf("Am dat drop la pachet nu e IPv4\n");
 			continue;
 		}
 
