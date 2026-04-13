@@ -6,6 +6,35 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+
+int qsort_compare(const void *a, const void *b) {
+
+	struct route_table_entry *a_rt = (struct route_table_entry *)a;
+	struct route_table_entry *b_rt = (struct route_table_entry *)b;
+
+	// si prefixul si masca sunt in big endian
+
+	uint32_t a_prefix = ntohl(a_rt->prefix);
+	uint32_t b_prefix = ntohl(b_rt->prefix);
+
+	if (b_prefix < a_prefix) {
+		return -1;
+	} else if (b_prefix > a_prefix) {
+		return 1;
+	}
+
+	uint32_t a_mask = ntohl(a_rt->mask);
+	uint32_t b_mask = ntohl(b_rt->mask);
+
+	if (b_mask < a_mask) {
+		return -1;
+	} else if (b_mask < a_mask) {
+		return 1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	char buf[MAX_PACKET_LEN];
@@ -29,6 +58,10 @@ int main(int argc, char *argv[])
 	// char *buffer = malloc(sizeof(char) * MAX_PACKET_LEN);
 	// DIE(buffer == NULL, "Bufferul pentru pachete nu a fost alocat - linia 26");
 
+	
+	// sortez r table crescator dupa masca
+	qsort(r_table, r_table_len, sizeof(struct route_table_entry), qsort_compare);
+	
 	while (1) {
 
 		size_t interface;
@@ -92,17 +125,46 @@ int main(int argc, char *argv[])
 		ip_buf->checksum = htons(new_checksum);
 
 		// caut LPM
-		uint32_t maxx = 0; // lungimea maxima a mastii
+
+		// ineficient
+		// uint32_t maxx = 0; // lungimea maxima a mastii
+		// struct route_table_entry *best_route = NULL;
+
+		// for (int i = 0; i < r_table_len; ++i) {
+			
+		// 	if ((ip_buf->dest_addr & r_table[i].mask) == r_table[i].prefix) {
+
+		// 		if (ntohl(r_table[i].mask) > maxx) {
+		// 			maxx = ntohl(r_table[i].mask);
+		// 			best_route = &r_table[i];
+		// 		}
+		// 	}
+		// }
+
+		// eficient
 		struct route_table_entry *best_route = NULL;
 
-		for (int i = 0; i < r_table_len; ++i) {
-			
-			if ((ip_buf->dest_addr & r_table[i].mask) == r_table[i].prefix) {
+		// folosesc cautarea binara pentru eficienta
 
-				if (ntohl(r_table[i].mask) > maxx) {
-					maxx = ntohl(r_table[i].mask);
-					best_route = &r_table[i];
-				}
+		int l = 0, r = r_table_len - 1, mid;
+
+		uint32_t dest_addr = ntohl(ip_buf->dest_addr);
+
+		while (l <= r) {
+			mid = (l + r) / 2;
+
+			uint32_t preifx = ntohl(r_table[mid].prefix);
+			uint32_t mask = ntohl(r_table[mid].mask);
+
+			if ((dest_addr & mask) == preifx) {
+				best_route = &r_table[mid];
+
+				// cautam cautarea dupa cea mai buna masca
+				l = mid + 1;
+			} else if (dest_addr > preifx) {
+				l = mid + 1;
+			} else {
+				r = mid - 1;
 			}
 		}
 
