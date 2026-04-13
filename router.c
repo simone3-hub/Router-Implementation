@@ -17,18 +17,22 @@ int qsort_compare(const void *a, const void *b) {
 	uint32_t a_prefix = ntohl(a_rt->prefix);
 	uint32_t b_prefix = ntohl(b_rt->prefix);
 
-	if (b_prefix < a_prefix) {
+	if (b_prefix > a_prefix) {
 		return -1;
-	} else if (b_prefix > a_prefix) {
+	}
+
+	if (b_prefix < a_prefix) {
 		return 1;
 	}
 
 	uint32_t a_mask = ntohl(a_rt->mask);
 	uint32_t b_mask = ntohl(b_rt->mask);
 
-	if (b_mask < a_mask) {
+	if (b_mask > a_mask) {
 		return -1;
-	} else if (b_mask < a_mask) {
+	}
+
+	if (b_mask < a_mask) {
 		return 1;
 	}
 
@@ -146,25 +150,32 @@ int main(int argc, char *argv[])
 
 		// folosesc cautarea binara pentru eficienta
 
-		int l = 0, r = r_table_len - 1, mid;
+		int l = 0, r = r_table_len - 1, mid, idx = -1;
 
 		uint32_t dest_addr = ntohl(ip_buf->dest_addr);
 
 		while (l <= r) {
-			mid = (l + r) / 2;
+			mid = l + (r - l) / 2;
 
 			uint32_t preifx = ntohl(r_table[mid].prefix);
-			uint32_t mask = ntohl(r_table[mid].mask);
 
-			if ((dest_addr & mask) == preifx) {
-				best_route = &r_table[mid];
-
-				// cautam cautarea dupa cea mai buna masca
-				l = mid + 1;
-			} else if (dest_addr > preifx) {
+			if (preifx <= dest_addr) {
+				idx = mid;
 				l = mid + 1;
 			} else {
 				r = mid - 1;
+			}
+		}
+
+		if (idx != - 1) {
+			for (int i = idx; i >= 0; --i) {
+				uint32_t prefix = ntohl(r_table[i].prefix);
+				uint32_t mask = ntohl(r_table[i].mask);
+
+				if ((dest_addr & mask) == prefix) {
+					best_route = &r_table[i];
+					break;
+				}
 			}
 		}
 
