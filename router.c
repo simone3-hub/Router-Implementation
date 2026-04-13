@@ -244,6 +244,7 @@ int main(int argc, char *argv[])
 				
 				send_to_link(42, whole_arp_req, best_route->interface);
 
+				printf("Trimit ARP sa aflu adresa MAC prin broadcast");
 				continue;
 			}
 
@@ -256,7 +257,7 @@ int main(int argc, char *argv[])
 		} else if (ntohs(ethernet_packet->ethr_type) == 0x806) {
 
 			struct arp_hdr *receive_arp = (struct arp_hdr *)(buf + 14);
-
+			printf("A intrat in ARP");
 			if (ntohs(receive_arp->opcode) == 1) {
 				// intreb cine are ip ul pe care l caut
 
@@ -277,6 +278,7 @@ int main(int argc, char *argv[])
 				receive_arp->sprotoa = inet_addr(get_interface_ip(interface));
 
 				send_to_link(42, buf, interface);
+				printf("Merge/intra in 1");
 			} else if (ntohs(receive_arp->opcode) == 2) {
 				// aici e ip ul pe care l caut, dau MAC ul de aici
 
@@ -338,6 +340,7 @@ int main(int argc, char *argv[])
 				}
 
 				free(put_back_q);
+				printf("Merge/intra in 2");
 			}
 		} else {
 
