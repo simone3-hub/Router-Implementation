@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 typedef struct {
 	int interface;
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
 	// char *buffer = malloc(sizeof(char) * MAX_PACKET_LEN);
 	// DIE(buffer == NULL, "Bufferul pentru pachete nu a fost alocat - linia 26");
 
-	queue q = queue_create();
+	queue q = create_queue();
 	int arp_table_len = 0;
 
 	// sortez r table crescator dupa masca
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 
 			// folosesc cautarea binara pentru eficienta
 
-			int l = 0, r = r_table_len - 1, mid, idx = -1;
+			int l = 0, r = r_table_len - 1, mid;
 
 			uint32_t dest_addr = ntohl(ip_buf->dest_addr);
 
@@ -259,8 +260,9 @@ int main(int argc, char *argv[])
 			if (ntohs(receive_arp->opcode) == 1) {
 				// intreb cine are ip ul pe care l caut
 
-
-				memcpy(ethernet_packet->ethr_dhost, ethernet_packet->ethr_shost, 6);
+				for (int j = 0; j < 6; ++j) {
+					ethernet_packet->ethr_dhost[j] = ethernet_packet->ethr_shost[j];
+				}
 				get_interface_mac(interface, ethernet_packet->ethr_shost);
 				// gata ethernet
 
@@ -286,7 +288,7 @@ int main(int argc, char *argv[])
 				// gata e pus in arp table
 
 				// queue ca sa pun inapoi pachetele care inca asteapta
-				queue put_back_q = queue_create();
+				queue put_back_q = create_queue();
 
 				while(!queue_empty(q)) {
 
