@@ -46,6 +46,53 @@ int qsort_compare(const void *a, const void *b) {
 	return 0;
 }
 
+void errors(struct ether_hdr *eth, struct ip_hdr *ip, int interface, u_int8_t type, uint8_t code) {
+	char new_buf[MAX_PACKET_LEN];
+
+	int icmp_payload_len = 28; // ip + 8
+	int ip_len = 56; // ip + icmp + payload
+	int pkt_len = 70; // eth + icmp
+
+	struct ether_hdr *new_eth = (struct ether_hdr *)new_buf;
+	struct ip_hdr *new_ip = (struct ip_hdr *)(new_buf + 14);
+	struct icmp_hdr *new_icmp = (struct icmp_hdr *)(new_buf + 34);
+	uint8_t *payload = (uint8_t *)(new_buf + 42);
+
+	// headerul eth
+	for (int i = 0; i < 6; ++i) {
+		new_eth->ethr_dhost[i] = eth->ethr_shost[i];
+	}
+	get_interface_mac(interface, new_eth->ethr_shost);
+	new_eth->ethr_type = htons(0x0800);
+
+	// headerul ip
+	new_ip->ihl = 5;
+	new_ip->ver = 4;
+	new_ip->tos = 0;
+	new_ip->tot_len = htons(ip_len);
+	new_ip->id = htons(4);
+	new_ip->frag = 0;
+	new_ip->ttl = 100;
+	new_ip->proto = 1;
+	new_ip->checksum = 0;
+	new_ip->dest_addr = ip->source_addr;
+	new_ip->source_addr = inet_addr(get_interface_ip(interface));
+	new_ip->checksum = checksum((uint16_t *)new_ip, sizeof(struct ip_hdr));
+
+	// headerul icmp
+	new_icmp->mtype = type;
+	new_icmp->mcode = code;
+	new_icmp->check = 0;
+
+	uint8_t *ip_bytes = (uint8_t *)ip;
+	for (int i = 0; i < icmp_payload_len; ++i) {
+		payload[i] = ip_bytes[i];
+	}
+
+	new_icmp->check = checksum((uint16_t *)new_icmp, icmp_payload_len + 8);
+	send_to_link(pkt_len, new_buf, interface);
+}
+
 int main(int argc, char *argv[])
 {
 	char buf[MAX_PACKET_LEN];
@@ -110,6 +157,37 @@ int main(int argc, char *argv[])
 			}
 
 			if (in_routers == true) {
+				
+				if (ip_buf->proto == 1) {
+
+					struct icmp_hdr *icmp_part = (struct icmp_hdr *)(buf + 34);
+
+					if (icmp_part->mtype == 8 && icmp_part->mcode == 0) {
+						icmp_part->mtype = 0;
+						icmp_part->mcode = 0;
+						icmp_part->check = 0;
+						// lungimea poate varia
+						uint16_t new_checksum = checksum((uint16_t *)icmp_part, ntohs(ip_buf->tot_len) - sizeof(struct ip_hdr));
+						icmp_part->check = new_checksum;
+
+						uint32_t temp_ip = ip_buf->dest_addr;
+						ip_buf->dest_addr = ip_buf->source_addr;
+						ip_buf->source_addr = temp_ip;
+
+						ip_buf->ttl = 100;
+						ip_buf->checksum = 0;
+						ip_buf->checksum = checksum((uint16_t *)ip_buf, sizeof(struct ip_hdr));
+
+						for (int j = 0; j < 6; ++j) {
+							ethernet_packet->ethr_dhost[j] = ethernet_packet->ethr_shost[j];
+						}
+						get_interface_mac(interface, ethernet_packet->ethr_shost);
+
+						send_to_link(len, buf, interface);
+						printf("Type 8 Code 0 OK\n");
+					}
+				}
+
 				continue;
 			}
 
@@ -125,6 +203,7 @@ int main(int argc, char *argv[])
 
 			if (ip_buf->ttl <= 1) {
 				printf("E timpul sa iesi!!!\n");
+				errors(ethernet_packet, ip_buf, interface, 11, 0);
 				continue;
 			}
 
@@ -188,6 +267,7 @@ int main(int argc, char *argv[])
 
 			if (best_route == NULL) {
 				printf("Nu exista ruta\n");
+				errors(ethernet_packet, ip_buf, interface, 3, 0);
 				continue;
 			}
 			
@@ -300,7 +380,7 @@ int main(int argc, char *argv[])
 					struct ip_hdr *q_pkt_ip = (struct ip_hdr *)(q_pkt->buffer + 14);
 
 					struct route_table_entry *q_route = NULL;
-					int l = 0, r = r_table_len - 1, mid, idx = -1;
+					int l = 0, r = r_table_len - 1, mid;
 
 					uint32_t dest_addr = ntohl(q_pkt_ip->dest_addr);
 
